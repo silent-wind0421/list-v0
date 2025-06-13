@@ -5,6 +5,13 @@ import type { Schema } from "@/data-schema";
 
 const client = generateClient<Schema>();
 
+const createTodo = async () => {
+  await client.models.Todo.create({
+    content: window.prompt("Todo content?"),
+    isDone: false,
+  });
+}
+
 export default function Home() {
   return (
     <div className={styles.page}>
