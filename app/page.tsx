@@ -1,5 +1,9 @@
 import Image from "next/image";
 import styles from "./page.module.css";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "@/data-schema";
+
+const client = generateClient<Schema>();
 
 export default function Home() {
   return (
