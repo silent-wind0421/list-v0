@@ -1,7 +1,7 @@
 import Image from "next/image";
 import styles from "./page.module.css";
 import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/data-schema";
+import type { Schema } from "@/amplify/data/resource";
 
 const client = generateClient<Schema>();
 
