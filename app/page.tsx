@@ -24,6 +24,7 @@ export default function Home() {
           height={38}
           priority
         />
+        <button onClick={createTodo}>+ new</button>
         <ol>
           <li>
             Get started by editing <code>app/page.tsx</code>.
