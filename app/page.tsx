@@ -6,6 +6,11 @@ import { generateClient } from "aws-amplify/data";
 //import type { Schema } from "@/data-schema";
 import type { Schema } from "@/amplify/data/resource";
 import { useState, useEffect } from "react";
+import { Amplify } from "aws-amplify";
+import outputs from "@/amplify_outputs.json";
+
+Amplify.configure(outputs);
+
 
 const client = generateClient<Schema>();
 /*
