@@ -45,10 +45,21 @@ export default function Home() {
   }, []);
 
   function createTodo() {
+  if (typeof window !== "undefined") {
+    const content = window.prompt("Todo content");
+    if (content) {
+      client.models.Todo.create({ content });
+    }
+  }
+ }
+  
+ /*
+  function createTodo() {
     client.models.Todo.create({
       content: window.prompt("Todo content"),
     });
   }
+    */
 
   return (
     <div className={styles.page}>
