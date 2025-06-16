@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@/data-schema": ["../amplify-backend/amplify/data/resource"]
+      "@/data-schema": ["../amplify-backend/amplify/data/resource"],
+      //"@aws-amplify/backend": ["./amplify/backend"] // ← フロントから見た相対パスに注意
 
     }
   },
