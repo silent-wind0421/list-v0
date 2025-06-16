@@ -3,11 +3,23 @@
 import Image from "next/image";
 import styles from "./page.module.css";
 import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/data-schema";
-//import type { Schema } from "@/amplify/data/resource";
-
+//import type { Schema } from "@/data-schema";
+import type { Schema } from "@/amplify/data/resource";
+import { useState, useEffect } from "react";
 
 const client = generateClient<Schema>();
+/*
+function listTodos() {
+    client.models.Todo.observeQuery().subscribe({
+      next: (data) => setTodos([...data.items]),
+    });
+  }
+
+  useEffect(() => {
+    listTodos();
+  }, []);
+
+
 
 const createTodo = async () => {
   await client.models.Todo.create({
@@ -15,8 +27,29 @@ const createTodo = async () => {
     //isDone: false,
   });
 }
+*/
+
 
 export default function Home() {
+
+  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+
+  function listTodos() {
+    client.models.Todo.observeQuery().subscribe({
+      next: (data) => setTodos([...data.items]),
+    });
+  }
+
+  useEffect(() => {
+    listTodos();
+  }, []);
+
+  function createTodo() {
+    client.models.Todo.create({
+      content: window.prompt("Todo content"),
+    });
+  }
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -29,6 +62,11 @@ export default function Home() {
           priority
         />
         <button onClick={createTodo}>+ new</button>
+        <ul>
+        {todos.map((todo) => (
+          <li key={todo.id}>{todo.content}</li>
+        ))}
+      </ul>
         <ol>
           <li>
             Get started by editing <code>app/page.tsx</code>.

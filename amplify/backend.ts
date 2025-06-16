@@ -1,24 +1,11 @@
 import { defineBackend } from '@aws-amplify/backend';
-import { auth } from './auth/resource.js';
-import { data } from './data/resource.js';
-import { aws_dynamodb } from "aws-cdk-lib";
+import { auth } from './auth/resource';
+import { data } from './data/resource';
 
-export const backend = defineBackend({
+/**
+ * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
+ */
+defineBackend({
   auth,
   data,
 });
-
-const externalDataSourcesStack = backend.createStack("MyExternalDataSources");
-
-
-const externalTable = aws_dynamodb.Table.fromTableName(
-  externalDataSourcesStack,
-  "MyExternalPostTable",
-  "PostTable"
-);
-
-
-backend.data.addDynamoDbDataSource(
-  "ExternalPostTableDataSource",
-  externalTable
-);
