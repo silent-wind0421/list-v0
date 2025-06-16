@@ -1,165 +1,227 @@
 "use client";
 
-import Image from "next/image";
-import styles from "./page.module.css";
+import { useEffect, useRef, useState } from "react";
 import { generateClient } from "aws-amplify/data";
-//import type { Schema } from "@/data-schema";
 import type { Schema } from "@/amplify/data/resource";
-import { useState, useEffect } from "react";
 import { Amplify } from "aws-amplify";
 import outputs from "@/amplify_outputs.json";
+import "@aws-amplify/ui-react/styles.css";
+import { useTheme, View, Image, Heading, Text, Button } from "@aws-amplify/ui-react";
+import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react";
+import { Subscription } from 'rxjs';
+import { I18n } from '@aws-amplify/core';
+import { signIn } from 'aws-amplify/auth';
+import { useRouter } from "next/navigation";
 
+// 日本語表示
+I18n.setLanguage('ja'); 
+I18n.putVocabularies({
+  ja: {
+    'Sign in': '送信',
+    'Signing in': '送信中',
+    'Incorrect username or password.': 'IDまたはパスワードが間違っています。',
+  },
+});
+
+//amplify settingの反映
 Amplify.configure(outputs);
 
-
+// dynamodbの作成
 const client = generateClient<Schema>();
-/*
-function listTodos() {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  }
-
-  useEffect(() => {
-    listTodos();
-  }, []);
 
 
+//　Amplify UIのカスタマイズ
+const components = {
 
-const createTodo = async () => {
-  await client.models.Todo.create({
-    content: window.prompt("Todo content?"),
-    //isDone: false,
-  });
-}
-*/
+  SignIn: {
+    Header() {
+      const { tokens } = useTheme();
+
+      return (
+        <Heading
+          padding={`${tokens.space.xl} 0 0 ${tokens.space.xl}`}
+          level={3}
+        >
+          ログイン画面
+        </Heading>
+      );
+    },
+
+     Footer() {
+      const { submitForm } = useAuthenticator();
+
+      return (
+        <View textAlign="center" padding="1rem">
+         
+        </View>
+      );
+    },
 
 
-export default function Home() {
+    SubmitButton() {
+      const { submitForm } = useAuthenticator();
+      return (
+        <View textAlign="center" padding="1rem">
+          <Button
+            variation="primary"
+            onClick={submitForm}
+           /* style={{ backgroundColor: 'blue', color: 'white' }}*/
+          >
+            送信
+          </Button>
+        </View>
+      );
+    },
 
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+    }    
+  };
 
-  function listTodos() {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  }
-
-  useEffect(() => {
-    listTodos();
-  }, []);
-
-  function createTodo() {
-  if (typeof window !== "undefined") {
-    const content = window.prompt("Todo content");
-    if (content) {
-      client.models.Todo.create({ content });
-    }
-  }
- }
   
- /*
-  function createTodo() {
-    client.models.Todo.create({
-      content: window.prompt("Todo content"),
+
+const formFields = {
+  signIn: {
+    username: {
+     label: 'ID:',
+     placeholder: '半角英数記号８文字以上で入力してください',
+     isRequired: true,
+    }, 
+
+    password: {
+      label: 'Password:',
+      placeholder: '半角英数記号８文字以上で入力してください',
+      isRequired: true,
+    },
+
+    
+
+  },
+  
+};
+
+
+function LoginApp() {
+  const [logins, setLogins] = useState<Array<Schema["Login"]["type"]>>([]);
+  const [showHistory, setShowHistory] = useState(false);
+//  const subscriptionRef = useRef<ReturnType<typeof client.models.Todo.observeQuery> | null>(null);
+  const subscriptionRef = useRef<Subscription | null>(null);
+  const router = useRouter();
+  
+  //認証情報の取得
+  const { user, authStatus, signOut } = useAuthenticator(context => [
+    context.user,
+    context.authStatus,
+    context.signOut,
+  ]);
+
+  const isWritingRef = useRef(false); //useRefの初期値の設定
+
+  // 🔸 書き込み処理（セッション＋useRef）
+  useEffect(() => {
+
+    //  認証状態かつ書き込みがまだされてない時
+    if (authStatus === "authenticated" && user && !isWritingRef.current) {
+      const loginId = user.signInDetails?.loginId;
+      console.log("loginId:", JSON.stringify(loginId)); 
+
+      if (!loginId) {
+        console.log("loginId is none") 
+        return;
+      }  
+
+      /* sessionStorageにデータがあれば以降の処理はスキップ */
+      const sessionKey = `hasLogged_${loginId}`;
+      if (sessionStorage.getItem(sessionKey)) return;
+
+      isWritingRef.current = true; //useRefのcurrentの書き換え（二重書き込み防止）
+
+      /* ISO形式への変換
+      const japanDate = new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
+      const isoString = new Date(japanDate).toISOString(); // "2025-06-01T05:00:00.000Z"
+      */
+
+      const now = new Date(); // 現在のUTC時間
+      // JST に変換する（UTC+9時間）
+      const jstTimestamp = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+
+      // loginTime に代入
+      const loginTime: Date = jstTimestamp;
+
+      /*
+      const loginTime = new Date().toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+      });*/
+
+      client.models.Login.create({
+        uid: loginId,
+        loginTime:  loginTime
+      }).then(() => {
+        sessionStorage.setItem(sessionKey, "true");
+        console.log("書き込み成功");
+        console.log(loginId);
+        console.log(loginTime.toISOString());
+
+        setTimeout(() => {
+          router.replace("/list");
+        }, 100);
+        //router.push("/list");
+      }).catch(err => {
+        console.error("書き込み失敗:", err);
+      });
+    }
+  }, [authStatus, user]);
+
+  // 🔸 「履歴を見る」ボタン押下時に購読開始
+  const handleShowHistory = () => {
+    setShowHistory(true);
+    if (subscriptionRef.current) return; // 二重登録防止
+
+    const subscription = client.models.Login.observeQuery().subscribe({
+      next: (data) => {
+        const sorted = [...data.items]
+          .filter((item) => item.loginTime)
+          .sort((a, b) =>
+            new Date(b.loginTime!).getTime() - new Date(a.loginTime!).getTime()
+          )
+          .slice(0, 5);
+        setLogins(sorted);
+      },
     });
-  }
-    */
+
+    subscriptionRef.current = subscription;
+  };
+
+  // 🔸 アンマウント時に購読解除
+  useEffect(() => {
+    return () => {
+      subscriptionRef.current?.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    sessionStorage.clear();
+    await signOut();
+ //   window.location.reload();
+  };
 
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <button onClick={createTodo}>+ new</button>
-        <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main style={{ padding: "1.5rem" }}>
+      <p>現在、更新中・・・</p>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      <div style={{ marginTop: "2rem" }}>
+        <button onClick={handleSignOut}>サインアウト</button>
+      </div>
+
+    </main>
+  
+  );
+}
+
+export default function App() {
+  return (
+  
+      <Authenticator formFields={formFields} components={components} hideSignUp={true} loginMechanisms={["username"]} >
+        <LoginApp />
+      </Authenticator>
+ 
   );
 }
