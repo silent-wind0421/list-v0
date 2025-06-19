@@ -146,6 +146,8 @@ function LoginApp() {
       // loginTime に代入
       const loginTime: Date = jstTimestamp;
 
+      const uids = ['user001', 'user002', 'user003'];
+
       /*
       const loginTime = new Date().toLocaleString("ja-JP", {
         timeZone: "Asia/Tokyo",
@@ -160,6 +162,11 @@ function LoginApp() {
         console.log(loginId);
         console.log(loginTime.toISOString());
 
+        uids.forEach(uid => {
+          client.models.Child.create({
+            uid: uid});
+          });    
+        
         setTimeout(() => {
           router.replace("/list");
         }, 100);
